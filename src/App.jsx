@@ -52,8 +52,7 @@ export default function App(){
  const [editing,setEditing]=useState(false),[archived,setArchived]=useState(false),[editItem,setEditItem]=useState(null);
  const [expanded,setExpanded]=useState(null),[activeVideo,setActiveVideo]=useState({}),[videoDraft,setVideoDraft]=useState('');
  const [notice,setNotice]=useState(''),[sync,setSync]=useState(db?'로그인 대기':'기기 저장'),[saving,setSaving]=useState(false);
- const [importOpen,setImportOpen]=useState(false);
- const uploaded=useRef(null),loadedUser=useRef(null),saveVersion=useRef(0);
+ const uploaded=useRef(null),importInput=useRef(null),loadedUser=useRef(null),saveVersion=useRef(0);
  const userId=session?.user?.id;
  const localKey=userId?KEY+'-'+userId:KEY;
  const show=msg=>{setNotice(msg)};
@@ -126,21 +125,24 @@ export default function App(){
    const incoming=normalize(raw);
    if(!confirm('백업 항목을 현재 목록에 병합할까? 같은 ID 항목은 현재 값을 유지해.'))return;
    update(d=>{const existing=new Set(d.items.map(x=>x.id));for(const row of incoming.items)if(!existing.has(row.id))d.items.push(row)});
-   setImportOpen(false);show('백업 가져오기 완료');
+   show('백업 가져오기 완료');
   }catch(e){show('가져오기 실패: '+e.message)}
  };
  if(!authReady)return <div className="loading">로그인 확인 중…</div>;
  if(db&&!session)return <Auth message={notice}/>;
  if(!loaded)return <div className="loading">내 목록 불러오는 중…</div>;
  return <div className="app">
-  <header className="header"><div className="brand"><span className="symbol">✦</span><div><strong>BODY CARE STUDIO</strong><small>MOVE · RELEASE · STRENGTHEN</small></div></div>
-   <div className="header-right"><label className="area-switch"><span className="sr-only">부위 선택</span><select value={area} onChange={e=>{setArea(e.target.value);setExpanded(null);setArchived(false);setEditing(false)}}>{areas.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select><ChevronDown size={15}/></label>
-   {db&&<button className="icon-btn" title="로그아웃" onClick={()=>db.auth.signOut()}><LogOut size={17}/></button>}</div></header>
+  <header className="header"><div className="brand"><span className="symbol">✦</span><div><strong>BODY CARE</strong></div></div>
+   <div className="header-right">
+    <button type="button" className="icon-btn" title="전체 JSON 다운로드" aria-label="전체 JSON 다운로드" onClick={makeBackup}><Download size={17}/></button>
+    <button type="button" className="icon-btn" title="전체 JSON 가져오기" aria-label="전체 JSON 가져오기" onClick={()=>importInput.current?.click()}><Upload size={17}/></button>
+    <input ref={importInput} type="file" accept="application/json,.json" className="sr-only" tabIndex={-1} onChange={e=>{const file=e.target.files?.[0];e.target.value='';importBackup(file)}}/>
+    {db&&<button type="button" className="icon-btn" title="로그아웃" aria-label="로그아웃" onClick={()=>db.auth.signOut()}><LogOut size={17}/></button>}
+    <label className="area-switch"><span className="sr-only">장르 선택</span><select aria-label="장르 선택" value={area} onChange={e=>{setArea(e.target.value);setExpanded(null);setArchived(false);setEditing(false)}}>{areas.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select><ChevronDown size={15}/></label>
+   </div></header>
   <main className="content">
    <section className="heading"><div><h1>{areas.find(x=>x.id===area).name} · {groups.find(x=>x.id===group).name}</h1><p>{items.length}개 항목 · 전체 {allCount}개 · {sync}</p></div></section>
-   <div className="toolbar"><button type="button" onClick={makeBackup}><Download size={15}/> JSON 백업</button><button onClick={()=>setImportOpen(v=>!v)}><Upload size={15}/> 가져오기</button>
-    <button className={editing?'chosen':''} onClick={()=>{setEditing(v=>!v);setArchived(false)}}><Pencil size={15}/> {editing?'편집 완료':'목록 편집'}</button></div>
-   {importOpen&&<div className="importer"><p>이전에 다운로드한 Body Care Studio JSON 백업을 병합해.</p><input type="file" accept="application/json,.json" onChange={e=>importBackup(e.target.files?.[0])}/></div>}
+   <div className="toolbar toolbar-edit"><button className={editing?'chosen':''} onClick={()=>{setEditing(v=>!v);setArchived(false)}}><Pencil size={15}/> {editing?'편집 완료':'목록 편집'}</button></div>
    {editing&&<div className="toolbar"><button onClick={()=>setEditItem({title:'',note:''})}><Plus size={15}/> 항목 추가</button><button onClick={()=>setArchived(v=>!v)}><RotateCcw size={15}/> {archived?'일반 목록':'보관 목록'}</button></div>}
    {editItem&&<ItemForm key={editItem.id||'new'} item={editItem} onSave={saveItem} onClose={()=>setEditItem(null)}/>}
    <div className="list">{items.map((item,index)=>{
